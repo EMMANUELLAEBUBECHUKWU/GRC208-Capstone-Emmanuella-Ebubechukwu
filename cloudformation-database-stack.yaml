@@ -1,0 +1,312 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'GRC Platform - Database Infrastructure Stack'
+
+Parameters:
+  EnvironmentName:
+    Type: String
+    Default: grc-capstone
+    Description: Environment name prefix
+  
+  DBName:
+    Type: String
+    Default: grcdb
+    Description: Database name
+  
+  DBUsername:
+    Type: String
+    NoEcho: true
+    Description: Database master username
+  
+  DBPassword:
+    Type: String
+    NoEcho: true
+    Description: Database master password
+    MinLength: 8
+  
+  DBInstanceClass:
+    Type: String
+    Default: db.t3.micro
+    Description: RDS instance class
+  
+  AllocatedStorage:
+    Type: Number
+    Default: 20
+    Description: Allocated storage in GB
+
+Resources:
+  # RDS Subnet Group
+  DbSubnetGroup:
+    Type: AWS::RDS::DBSubnetGroup
+    Properties:
+      DBSubnetGroupDescription: Subnet group for RDS database
+      SubnetIds:
+        - !ImportValue grc-capstone-private-subnet-1-id
+        - !ImportValue grc-capstone-private-subnet-2-id
+      Tags:
+        - Key: Name
+          Value: !Sub '${EnvironmentName}-db-subnet-group'
+
+  # RDS MySQL Database
+  GrcDatabase:
+    Type: AWS::RDS::DBInstance
+    DeletionPolicy: Snapshot
+    Properties:
+      DBInstanceIdentifier: !Sub '${EnvironmentName}-db'
+      Engine: mysql
+      EngineVersion: '8.0.40'
+      DBInstanceClass: !Ref DBInstanceClass
+      AllocatedStorage: !Ref AllocatedStorage
+      StorageType: gp3
+      StorageEncrypted: true
+      KmsKeyId: !GetAtt DbEncryptionKey.Arn
+      DBName: !Ref DBName
+      MasterUsername: !Ref DBUsername
+      MasterUserPassword: !Ref DBPassword
+      DBSubnetGroupName: !Ref DbSubnetGroup
+      VPCSecurityGroups:
+        - !ImportValue grc-capstone-rds-sg-id
+      BackupRetentionPeriod: 30
+      PreferredBackupWindow: '03:00-04:00'
+      PreferredMaintenanceWindow: 'sun:04:00-sun:05:00'
+      MultiAZ: false
+      EnableCloudwatchLogsExports:
+        - error
+        - general
+        - slowquery
+      EnableIAMDatabaseAuthentication: true
+      DeletionProtection: true
+      Tags:
+        - Key: Name
+          Value: !Sub '${EnvironmentName}-mysql-db'
+
+  # KMS Key for Database Encryption
+  DbEncryptionKey:
+    Type: AWS::KMS::Key
+    Properties:
+      Description: KMS key for RDS encryption
+      KeyPolicy:
+        Version: '2012-10-17'
+        Statement:
+          - Sid: Enable IAM policies
+            Effect: Allow
+            Principal:
+              AWS: !Sub 'arn:aws:iam::${AWS::AccountId}:root'
+            Action: 'kms:*'
+            Resource: '*'
+          - Sid: Allow RDS to use the key
+            Effect: Allow
+            Principal:
+              Service: rds.amazonaws.com
+            Action:
+              - 'kms:Decrypt'
+              - 'kms:GenerateDataKey'
+              - 'kms:CreateGrant'
+            Resource: '*'
+
+  DbEncryptionKeyAlias:
+    Type: AWS::KMS::Alias
+    Properties:
+      AliasName: !Sub 'alias/${EnvironmentName}-db-key'
+      TargetKeyId: !Ref DbEncryptionKey
+
+  # S3 Bucket for Evidence Storage
+  EvidenceBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Sub '${EnvironmentName}-evidence-bucket-${AWS::AccountId}'
+      VersioningConfiguration:
+        Status: Enabled
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: 'aws:kms'
+              KMSMasterKeyID: !GetAtt S3EncryptionKey.Arn
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      Tags:
+        - Key: Name
+          Value: !Sub '${EnvironmentName}-evidence-bucket'
+
+  # KMS Key for S3 Encryption
+  S3EncryptionKey:
+    Type: AWS::KMS::Key
+    Properties:
+      Description: KMS key for S3 encryption
+      KeyPolicy:
+        Version: '2012-10-17'
+        Statement:
+          - Sid: Enable IAM policies
+            Effect: Allow
+            Principal:
+              AWS: !Sub 'arn:aws:iam::${AWS::AccountId}:root'
+            Action: 'kms:*'
+            Resource: '*'
+          - Sid: Allow S3 to use the key
+            Effect: Allow
+            Principal:
+              Service: s3.amazonaws.com
+            Action:
+              - 'kms:Decrypt'
+              - 'kms:GenerateDataKey'
+            Resource: '*'
+
+  S3EncryptionKeyAlias:
+    Type: AWS::KMS::Alias
+    Properties:
+      AliasName: !Sub 'alias/${EnvironmentName}-s3-key'
+      TargetKeyId: !Ref S3EncryptionKey
+
+  # S3 Bucket for Compliance Reports
+  ComplianceReportsBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Sub '${EnvironmentName}-compliance-reports-${AWS::AccountId}'
+      VersioningConfiguration:
+        Status: Enabled
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: 'aws:kms'
+              KMSMasterKeyID: !GetAtt S3EncryptionKey.Arn
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      LifecycleConfiguration:
+        Rules:
+          - Id: DeleteOldReports
+            Status: Enabled
+            ExpirationInDays: 365
+      Tags:
+        - Key: Name
+          Value: !Sub '${EnvironmentName}-compliance-reports'
+
+  # DynamoDB Table for Compliance Status
+  ComplianceStatusTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: grc-compliance-status
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: timestamp
+          AttributeType: S
+      KeySchema:
+        - AttributeName: timestamp
+          KeyType: HASH
+      StreamSpecification:
+        StreamViewType: NEW_AND_OLD_IMAGES
+      TimeToLiveSpecification:
+        AttributeName: ttl
+        Enabled: true
+      Tags:
+        - Key: Name
+          Value: !Sub '${EnvironmentName}-compliance-status-table'
+
+  # DynamoDB Table for Risk Register
+  RiskRegisterTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: grc-risk-register
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: risk_id
+          AttributeType: S
+        - AttributeName: assessment_date
+          AttributeType: S
+      KeySchema:
+        - AttributeName: risk_id
+          KeyType: HASH
+        - AttributeName: assessment_date
+          KeyType: RANGE
+      GlobalSecondaryIndexes:
+        - IndexName: assessment_date_index
+          KeySchema:
+            - AttributeName: assessment_date
+              KeyType: HASH
+          Projection:
+            ProjectionType: ALL
+      StreamSpecification:
+        StreamViewType: NEW_AND_OLD_IMAGES
+      Tags:
+        - Key: Name
+          Value: !Sub '${EnvironmentName}-risk-register-table'
+
+  # DynamoDB Table for Controls
+  ControlsTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: grc-controls
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: control_id
+          AttributeType: S
+        - AttributeName: framework
+          AttributeType: S
+      KeySchema:
+        - AttributeName: control_id
+          KeyType: HASH
+        - AttributeName: framework
+          KeyType: RANGE
+      GlobalSecondaryIndexes:
+        - IndexName: framework_index
+          KeySchema:
+            - AttributeName: framework
+              KeyType: HASH
+          Projection:
+            ProjectionType: ALL
+      Tags:
+        - Key: Name
+          Value: !Sub '${EnvironmentName}-controls-table'
+
+Outputs:
+  DatabaseEndpoint:
+    Description: RDS Database Endpoint
+    Value: !GetAtt GrcDatabase.Endpoint.Address
+    Export:
+      Name: !Sub '${EnvironmentName}-db-endpoint'
+
+  DatabasePort:
+    Description: RDS Database Port
+    Value: !GetAtt GrcDatabase.Endpoint.Port
+    Export:
+      Name: !Sub '${EnvironmentName}-db-port'
+
+  DatabaseName:
+    Description: Database Name
+    Value: !Ref DBName
+    Export:
+      Name: !Sub '${EnvironmentName}-db-name'
+
+  EvidenceBucketName:
+    Description: Evidence Storage Bucket Name
+    Value: !Ref EvidenceBucket
+    Export:
+      Name: !Sub '${EnvironmentName}-evidence-bucket'
+
+  ComplianceReportsBucketName:
+    Description: Compliance Reports Bucket Name
+    Value: !Ref ComplianceReportsBucket
+    Export:
+      Name: !Sub '${EnvironmentName}-compliance-reports-bucket'
+
+  ComplianceStatusTableName:
+    Description: Compliance Status DynamoDB Table
+    Value: !Ref ComplianceStatusTable
+    Export:
+      Name: !Sub '${EnvironmentName}-compliance-status-table'
+
+  RiskRegisterTableName:
+    Description: Risk Register DynamoDB Table
+    Value: !Ref RiskRegisterTable
+    Export:
+      Name: !Sub '${EnvironmentName}-risk-register-table'
+
+  ControlsTableName:
+    Description: Controls DynamoDB Table
+    Value: !Ref ControlsTable
+    Export:
+      Name: !Sub '${EnvironmentName}-controls-table'

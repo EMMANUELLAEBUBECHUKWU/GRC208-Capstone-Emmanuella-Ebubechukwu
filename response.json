@@ -1,0 +1,1 @@
+{"statusCode": 200, "body": "{\"message\": \"Data loaded!\", \"tables\": [\"audit_logs\", \"controls\", \"frameworks\", \"risks\"]}"}

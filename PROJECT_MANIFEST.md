@@ -2,13 +2,16 @@
 
 ## GRC208 Capstone: AWS Integrated GRC Platform
 
-**Student:** Emmanuella Ebubechukwu
-**Student ID:** 2025/GRC/10041
-**Deployed:** March 24, 2026
-**Environment:** AWS Academy Learner Lab
-**Region:** us-east-1
-**Total Files:** 17
-**Total Lines of Code:** 5,602
+## Student Information
+- *Name:* Emmanuella Ebubechukwu
+- *Student ID:* 2025/GRC/10041
+- *Course:* GRC208 - Governance, Risk, and Compliance
+- *Institution:* International Cybersecurity and Digital Forensics Academy (ICDFA)
+- *Date Deployed:* March 24, 2026
+- *Environment:* AWS Academy Learner Lab
+- *Region:* us-east-1 (N. Virginia)
+- *Total Files:* 16
+- *Total Lines of Code:* 5,602
 
 -----
 

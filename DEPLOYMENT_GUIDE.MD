@@ -394,7 +394,7 @@ git clone https://YOUR_TOKEN@github.com/EMMANUELLAEBUBECHUKWU/...
 
 ### Lambda cannot connect to RDS
 
-RDS is in a private subnet — it cannot be reached from CloudShell directly. This is intentional. Use the `grc-db-loader` VPC-connected Lambda to interact with the database from within the private network.
+RDS is in a private subnet, it cannot be reached from CloudShell directly. This is intentional. Use the `grc-db-loader` VPC-connected Lambda to interact with the database from within the private network.
 
 -----
 
@@ -412,7 +412,7 @@ The S3 bucket policy must be in place before creating the trail. If you skipped 
 
 ### Learner Lab session expires mid-deployment
 
-If the lab times out during deployment, restart it and check which phases completed before continuing. Do not redeploy a phase that already shows `CREATE_COMPLETE` in CloudFormation — it will fail with a `AlreadyExistsException`.
+If the lab times out during deployment, restart it and check which phases completed before continuing. Do not redeploy a phase that already shows `CREATE_COMPLETE` in CloudFormation,  it will fail with a `AlreadyExistsException`.
 
 -----
 

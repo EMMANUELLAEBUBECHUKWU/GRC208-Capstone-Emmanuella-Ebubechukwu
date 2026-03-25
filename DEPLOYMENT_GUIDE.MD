@@ -1,6 +1,6 @@
 # Deployment Guide
 
-## GRC208 Capstone — AWS Integrated GRC Platform
+## GRC208 Capstone: AWS Integrated GRC Platform
 
 **Student:** Emmanuella Ebubechukwu
 **Student ID:** 2025/GRC/10041
@@ -32,7 +32,7 @@ Before starting, make sure you have the following in place:
 **AWS Access**
 
 - AWS Academy Learner Lab access through your enrolled course
-- All deployment commands run inside **AWS CloudShell** — no local software installation needed
+- All deployment commands run inside **AWS CloudShell**, no local software installation needed
 - Confirm your credentials are active before starting any phase:
 
 ```bash
@@ -60,7 +60,7 @@ Confirm all 17 project files are present before proceeding.
 
 -----
 
-## Phase 1 — Network Infrastructure
+## Phase 1: Network Infrastructure
 
 The network stack was deployed prior to this session using the `cloudformation-network-stack.yaml` template. It creates the foundational networking layer that all other resources depend on.
 
@@ -92,7 +92,7 @@ Expected result: `"CREATE_COMPLETE"`
 
 -----
 
-## Phase 2 — Database Infrastructure
+## Phase 2: Database Infrastructure
 
 This phase deploys the RDS MySQL database, S3 storage buckets, DynamoDB tables and KMS encryption keys using the `cloudformation-database-stack.yaml` template.
 
@@ -167,7 +167,7 @@ Wait for deletion to complete, fix the template, then redeploy.
 
 -----
 
-## Phase 3 — Lambda Function
+## Phase 3: Lambda Function
 
 The compliance monitor Lambda function needs to be packaged with `pymysql` because the default Lambda Python runtime does not include it. Without this library, the function cannot communicate with the RDS database.
 
@@ -206,7 +206,7 @@ Expected result: `"Active"`
 
 -----
 
-## Phase 4 — CloudTrail Audit Logging
+## Phase 4: CloudTrail Audit Logging
 
 CloudTrail records every API call made in the AWS account. Before the trail can be created, the S3 bucket needs a policy that allows CloudTrail to write to it.
 
@@ -269,7 +269,7 @@ Expected result: `true`
 
 -----
 
-## Phase 5 — Loading Sample Data
+## Phase 5: Loading Sample Data
 
 RDS is deployed in a private subnet and is not reachable directly from AWS CloudShell. To load data into the database, a second Lambda function was created specifically to run inside the VPC and connect to RDS from within the private network.
 

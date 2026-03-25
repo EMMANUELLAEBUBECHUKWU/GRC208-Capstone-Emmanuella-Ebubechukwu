@@ -2,11 +2,14 @@
 
 ## GRC208 Capstone: AWS Integrated GRC Platform
 
-**Student:** Emmanuella Ebubechukwu
-**Student ID:** 2025/GRC/10041
-**Deployed:** March 24, 2026
-**Environment:** AWS Academy Learner Lab
-**Region:** us-east-1
+## Student Information
+- **Name:** Emmanuella Ebubechukwu
+- **Student ID:** 2025/GRC/10041
+- **Course:** GRC208 - Governance, Risk, and Compliance
+- **Institution:** International Cybersecurity and Digital Forensics Academy (ICDFA)
+- **Date Deployed:** March 24, 2026
+- **Environment:** AWS Academy Learner Lab
+- **Region:** us-east-1 (N. Virginia)
 
 -----
 
@@ -278,8 +281,8 @@ aws cloudformation describe-stack-events \
   --output table
 ```
 
-This command showed exactly which resource failed and why.
-first the S3 BucketEncryption indentation, then the MySQL
+This command showed exactly which resource failed and why:
+the S3 BucketEncryption indentation first, then the MySQL
 version. Deleting and redeploying without reading the error
 would have repeated the same failure.
 
